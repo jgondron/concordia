@@ -50,7 +50,7 @@ def admin_bulk_import_view(request):
         form = AdminProjectBulkImportForm(request.POST, request.FILES)
 
         if form.is_valid():
-            context["task_ids"] = task_ids = []
+            context["import_jobs"] = import_jobs = []
 
             rows = slurp_excel(request.FILES["spreadsheet_file"])
             required_fields = [
@@ -118,7 +118,9 @@ def admin_bulk_import_view(request):
                 for url in potential_urls:
                     if not url.startswith("http"):
                         continue
-                    task_ids.append(import_items_into_project_from_url(project, url))
+                    import_jobs.append(
+                        import_items_into_project_from_url(request.user, project, url)
+                    )
                     messages.add_message(
                         request,
                         messages.INFO,
@@ -223,10 +225,12 @@ class ProjectAdmin(admin.ModelAdmin, CustomListDisplayFieldsMixin):
             if form.is_valid():
                 import_url = form.cleaned_data["import_url"]
 
-                task_id = import_items_into_project_from_url(project, import_url)
+                import_job = import_items_into_project_from_url(
+                    request.user, project, import_url
+                )
         else:
             form = AdminItemImportForm()
-            task_id = None
+            import_job = None
 
         media = self.media
 
@@ -251,7 +255,7 @@ class ProjectAdmin(admin.ModelAdmin, CustomListDisplayFieldsMixin):
             "has_editable_inline_admin_formsets": False,
             "project": project,
             "form": form,
-            "task_id": task_id,
+            "import_job": import_job,
         }
 
         return render(request, "admin/concordia/project/item_import.html", context)
@@ -263,15 +267,23 @@ class ItemAdmin(admin.ModelAdmin):
         "title",
         "slug",
         "item_id",
-        "campaign",
+        "campaign_title",
         "project",
         "status",
-        "is_publish",
+        "visible",
     )
     list_display_links = ("title", "slug", "item_id")
     prepopulated_fields = {"slug": ("title",)}
-    search_fields = ["title", "campaign__title", "project__title"]
-    list_filter = ("status", "campaign")
+    search_fields = ["title", "project__campaign__title", "project__title"]
+    list_filter = ("status", "project__campaign", "project")
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        qs = qs.select_related("project", "project__campaign")
+        return qs
+
+    def campaign_title(self, obj):
+        return obj.project.campaign.title
 
 
 @admin.register(Asset)

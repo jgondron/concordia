@@ -11,7 +11,6 @@ from machina.app import board
 from concordia.admin import admin_bulk_import_view
 from exporter import views as exporter_views
 from faq.views import FAQView
-from importer.views import check_and_save_campaign_assets, get_task_status
 
 from . import trans_urls, views, views_ws
 
@@ -62,10 +61,10 @@ tx_urlpatterns = (
             views.ReportCampaignView.as_view(),
             name="report campaign",
         ),
-        re_path(
-            r"^([^/]+)/asset/([^/]+)/$",
+        path(
+            "campaigns/<slug:campaign_slug>/<slug:project_slug>/<slug:item_slug>/<slug:slug>",
             views.ConcordiaAssetView.as_view(),
-            name="asset",
+            name="asset-detail",
         ),
         re_path(
             r"transcription/(\d+)/$",
@@ -227,27 +226,7 @@ urlpatterns += [
     ),
 ]
 
-urlpatterns += [
-    re_path(
-        r"^get_task_status/(?P<task_id>[a-zA-Z0-9-]+)$",
-        get_task_status,
-        name="get_task_status",
-    ),
-    re_path(
-        r"^check_and_save_campaign_assets/(?P<task_id>[a-zA-Z0-9-]+)/(?P<item_id>[a-zA-Z0-9-.]+)$",
-        check_and_save_campaign_assets,
-        name="check_and_save_campaign_item_assets",
-    ),
-    re_path(
-        r"^check_and_save_campaign_assets/(?P<task_id>[a-zA-Z0-9-.]+)/$",
-        check_and_save_campaign_assets,
-        name="check_and_save_campaign_assets",
-    ),
-    re_path(
-        r"^filter/campaigns/$", views.FilterCampaigns.as_view(), name="filter_campaigns"
-    ),
-]
-
+# FIXME: these should only be enabled for debugging as per https://docs.djangoproject.com/en/2.0/ref/views/#django.views.static.serve
 urlpatterns += [
     re_path(r"^static/(?P<path>.*)$", serve, {"document_root": settings.STATIC_ROOT})
 ]
